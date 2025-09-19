@@ -105,6 +105,30 @@ function recordChat(room, userId) {
   saveActivityData(room, activityData);
 }
 
+// 사용자에게 EXP 추가 (출석 보상 등)
+function addExp(room, userId, expAmount) {
+  var activityData = loadActivityData(room);
+  
+  // 사용자 데이터 초기화
+  if (!activityData.users[userId]) {
+    activityData.users[userId] = {
+      totalChats: 0,
+      exp: 0,
+      level: 1,
+      joinDate: new Date().toISOString()
+    };
+  }
+  
+  // EXP 추가
+  activityData.users[userId].exp += expAmount;
+  
+  // 레벨 업데이트
+  activityData.users[userId].level = getLevelFromExp(activityData.users[userId].exp);
+  
+  saveActivityData(room, activityData);
+  return true;
+}
+
 // 사용자 활동 정보 조회
 function getUserActivity(room, userId) {
   var activityData = loadActivityData(room);
@@ -175,6 +199,7 @@ module.exports = {
   
   // 기본 활동 관리
   recordChat: recordChat,
+  addExp: addExp,
   getUserActivity: getUserActivity,
   getRoomRanking: getRoomRanking,
   

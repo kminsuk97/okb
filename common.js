@@ -4,6 +4,7 @@ var myinfo = require('myinfo'); // 사용자 정보 관리 모듈
 var dataManager = require('dataManager'); // 데이터 관리 모듈
 var activity = require('activity'); // 활동 시스템 모듈
 var point = require('point'); // 포인트 시스템 모듈
+var attendance = require('attendance'); // 출석 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -11,6 +12,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     dataManager.setReplier(replier);
     activity.setReplier(replier);
     point.setReplier(replier);
+    attendance.setReplier(replier);
     dataManager._replierSet = true;
   }
   
@@ -29,6 +31,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "📝 !내정보등록 [정보] - 정보 추가/수정 (기존 정보 유지)\n";
     helpText += "🎯 !활동 - 내 활동 정보 조회 (레벨, 포인트, 채팅 횟수)\n";
     helpText += "💰 !양도 [사용자] [포인트] - 포인트 양도\n";
+    helpText += "📅 !출석 - 일일 출석 체크 (EXP 10, 포인트 10 지급)\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -111,6 +114,35 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
       replier.reply(result);
     } else {
       replier.reply("❌ " + transferResult.message);
+    }
+  }
+  
+  // !출석 명령어 처리
+  if (msg === "!출석") {
+    var attendanceResult = attendance.checkAttendance(room, sender);
+    
+    if (attendanceResult.success) {
+      // EXP 지급
+      var currentExp = activity.getUserActivity(room, sender).exp;
+      activity.addExp(room, sender, attendanceResult.expReward);
+      
+      // 포인트 지급
+      var currentPoints = point.getUserPoints(room, sender);
+      point.addUserPoints(room, sender, attendanceResult.pointReward);
+      
+      var result = "✅ " + attendanceResult.message + "\n";
+      result += "━━━━━━━━━━━━━━━━━━━━\n";
+      result += "🎁 보상 지급:\n";
+      result += "📊 EXP: +" + attendanceResult.expReward + "\n";
+      result += "💎 포인트: +" + attendanceResult.pointReward + "P\n";
+      result += "━━━━━━━━━━━━━━━━━━━━\n";
+      result += "📈 출석 통계:\n";
+      result += "📅 총 출석일: " + attendanceResult.totalDays + "일\n";
+      result += "🔥 연속 출석: " + attendanceResult.consecutiveDays + "일";
+      
+      replier.reply(result);
+    } else {
+      replier.reply("❌ " + attendanceResult.message);
     }
   }
   
