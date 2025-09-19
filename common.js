@@ -7,6 +7,7 @@ var point = require('point'); // 포인트 시스템 모듈
 var attendance = require('attendance'); // 출석 시스템 모듈
 var admin = require('admin'); // 관리자 시스템 모듈
 var jackpot = require('jackpot'); // 잭팟 시스템 모듈
+var shop = require('shop'); // 상점 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -17,6 +18,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     attendance.setReplier(replier);
     admin.setReplier(replier);
     jackpot.setReplier(replier);
+    shop.setReplier(replier);
     dataManager._replierSet = true;
   }
   
@@ -46,6 +48,9 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "🎯 !활동 - 내 활동 정보 조회 (레벨, 포인트, 채팅 횟수)\n";
     helpText += "💰 !양도 [사용자] [포인트] - 포인트 양도\n";
     helpText += "📅 !출석 - 일일 출석 체크 (EXP 10, 포인트 10 지급)\n";
+    helpText += "🛒 !상점 - 상점 목록 조회\n";
+    helpText += "🛍️ !구매 [아이템명] - 아이템 구매\n";
+    helpText += "📦 !구매목록 - 내 구매 목록 조회\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -303,6 +308,40 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     
     var result = jackpot.setJackpotSettings(room, cooldownMinutes, chancePercent, minReward, maxReward);
     replier.reply(result.message);
+  }
+  
+  // !상점 명령어 처리
+  if (msg === "!상점") {
+    var shopList = shop.formatShopList();
+    replier.reply(shopList);
+  }
+  
+  // !구매 [아이템명] 명령어 처리
+  if (msg.startsWith("!구매 ")) {
+    var parts = msg.split(" ");
+    if (parts.length < 2) {
+      replier.reply("❌ 사용법: !구매 [아이템명]\n예시: !구매 커피");
+      return;
+    }
+    
+    var itemName = parts.slice(1).join(" "); // 공백이 포함된 아이템명 처리
+    var userPoints = point.getUserPoints(room, sender);
+    
+    var purchaseResult = shop.purchaseItem(room, sender, itemName, userPoints);
+    
+    if (purchaseResult.success) {
+      // 포인트 차감
+      point.addUserPoints(room, sender, -purchaseResult.item.price);
+      replier.reply(purchaseResult.message);
+    } else {
+      replier.reply(purchaseResult.message);
+    }
+  }
+  
+  // !구매목록 명령어 처리
+  if (msg === "!구매목록") {
+    var purchaseList = shop.getUserPurchases(room, sender);
+    replier.reply(purchaseList);
   }
   
 }
