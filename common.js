@@ -8,6 +8,7 @@ var attendance = require('attendance'); // 출석 시스템 모듈
 var admin = require('admin'); // 관리자 시스템 모듈
 var jackpot = require('jackpot'); // 잭팟 시스템 모듈
 var shop = require('shop'); // 상점 시스템 모듈
+var ranking = require('ranking'); // 랭킹 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -19,6 +20,8 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     admin.setReplier(replier);
     jackpot.setReplier(replier);
     shop.setReplier(replier);
+    ranking.setReplier(replier);
+    ranking.setModules(activity, point);
     dataManager._replierSet = true;
   }
   
@@ -42,15 +45,18 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   // !도움말 명령어 처리
   if (msg === "!도움말" || msg === "!help") {
     var helpText = "🤖 메신저봇 명령어 도움말\n";
-    helpText += "━━━━━━━━━━━━━━━━━━━━\n";
+    helpText += "━━━━━━━━━━━━━\n";
     helpText += "📋 !내정보 - 내 정보 조회\n";
-    helpText += "📝 !내정보등록 [정보] - 정보 추가/수정 (기존 정보 유지)\n";
-    helpText += "🎯 !활동 - 내 활동 정보 조회 (레벨, 포인트, 채팅 횟수)\n";
+    helpText += "📝 !내정보등록 [정보] - 정보 추가/수정\n";
+    helpText += "🎯 !활동 - 내 활동 정보 조회\n";
     helpText += "💰 !양도 [사용자] [포인트] - 포인트 양도\n";
-    helpText += "📅 !출석 - 일일 출석 체크 (EXP 10, 포인트 10 지급)\n";
+    helpText += "📅 !출석 - 일일 출석 체크\n";
     helpText += "🛒 !상점 - 상점 목록 조회\n";
     helpText += "🛍️ !구매 [아이템명] - 아이템 구매\n";
     helpText += "📦 !구매목록 - 내 구매 목록 조회\n";
+    helpText += "📊 !랭킹 - 금일 채팅 랭킹 TOP 20\n";
+    helpText += "💰 !포인트랭킹 - 포인트 랭킹 TOP 20\n";
+    helpText += "⭐ !레벨랭킹 - 레벨 랭킹 TOP 20\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -64,7 +70,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     }
     
     var adminHelpText = "👑 관리자 전용 명령어 도움말\n";
-    adminHelpText += "━━━━━━━━━━━━━━━━━━━━\n";
+    adminHelpText += "━━━━━━━━━━━━━\n";
     adminHelpText += "👑 !관리자초기등록 - 관리자 시스템 초기화 (최초 1회)\n";
     adminHelpText += "👥 !관리자목록 - 관리자 목록 조회\n";
     adminHelpText += "➕ !관리자추가 [사용자] - 관리자 추가\n";
@@ -113,7 +119,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     var userPoints = point.getUserPoints(room, sender);
     
     var result = "🎯 " + sender + "님의 활동 정보\n";
-    result += "━━━━━━━━━━━━━━━━━━━━\n";
+    result += "━━━━━━━━━━━━━\n";
     result += "⭐ 레벨: " + userActivity.level + "\n";
     result += "💎 포인트: " + userPoints + "P\n";
     result += "💬 총 채팅: " + userActivity.totalChats + "회\n";
@@ -149,7 +155,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     
     if (transferResult.success) {
       var result = "✅ " + transferResult.message + "\n";
-      result += "━━━━━━━━━━━━━━━━━━━━\n";
+      result += "━━━━━━━━━━━━━\n";
       result += "📤 " + sender + "님: " + transferResult.fromPoints + "P\n";
       result += "📥 " + toUser + "님: " + transferResult.toPoints + "P";
       replier.reply(result);
@@ -172,11 +178,11 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
       point.addUserPoints(room, sender, attendanceResult.pointReward);
       
       var result = "✅ " + attendanceResult.message + "\n";
-      result += "━━━━━━━━━━━━━━━━━━━━\n";
+      result += "━━━━━━━━━━━━━\n";
       result += "🎁 보상 지급:\n";
       result += "📊 EXP: +" + attendanceResult.expReward + "\n";
       result += "💎 포인트: +" + attendanceResult.pointReward + "P\n";
-      result += "━━━━━━━━━━━━━━━━━━━━\n";
+      result += "━━━━━━━━━━━━━\n";
       result += "📈 출석 통계:\n";
       result += "📅 총 출석일: " + attendanceResult.totalDays + "일\n";
       result += "🔥 연속 출석: " + attendanceResult.consecutiveDays + "일";
@@ -342,6 +348,35 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   if (msg === "!구매목록") {
     var purchaseList = shop.getUserPurchases(room, sender);
     replier.reply(purchaseList);
+  }
+  
+  // !랭킹 명령어 처리 (일일 채팅 랭킹)
+  if (msg === "!랭킹") {
+    var rankingResult = ranking.giveDailyRewards(room);
+    if (rankingResult.success) {
+      // 보상 지급
+      for (var i = 0; i < rankingResult.rewards.length; i++) {
+        var reward = rankingResult.rewards[i];
+        point.addUserPoints(room, reward.userId, reward.points);
+      }
+      replier.reply(rankingResult.message);
+    } else {
+      // 보상이 이미 지급되었거나 상위 3명이 없는 경우 랭킹만 표시
+      var dailyRanking = ranking.getDailyChatRanking(room);
+      replier.reply(dailyRanking);
+    }
+  }
+  
+  // !포인트랭킹 명령어 처리
+  if (msg === "!포인트랭킹") {
+    var pointRanking = ranking.getPointRanking(room);
+    replier.reply(pointRanking);
+  }
+  
+  // !레벨랭킹 명령어 처리
+  if (msg === "!레벨랭킹") {
+    var levelRanking = ranking.getLevelRanking(room);
+    replier.reply(levelRanking);
   }
   
 }
