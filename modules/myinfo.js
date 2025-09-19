@@ -8,19 +8,22 @@ function formatUserInfo(userInfo) {
   }
   
   var result = "📋 내 정보\n";
-  result += "━━━━━━━━━━━━━━━━━━━━\n";
+  result += "━━━━━━━━━━━━━\n";
   
   // 기본 필드들 (우선순위로 먼저 표시)
-  if (userInfo.name) result += "👤 이름: " + userInfo.name + "\n";
-  if (userInfo.age) result += "🎂 나이: " + userInfo.age + "세\n";
-  if (userInfo.gender) result += "⚧ 성별: " + userInfo.gender + "\n";
-  if (userInfo.location) result += "📍 지역: " + userInfo.location + "\n";
-  if (userInfo.hobby) result += "🎯 취미: " + userInfo.hobby + "\n";
+  if (userInfo.nickname) result += "👤 닉네임: " + userInfo.nickname + "\n";
+  if (userInfo.joinDate) result += "📅 들어온 날짜: " + userInfo.joinDate + "\n";
+  if (userInfo.workTime) result += "⏰ 출퇴근 시간: " + userInfo.workTime + "\n";
+  if (userInfo.workLocation) result += "🏢 직장 지역: " + userInfo.workLocation + "\n";
   if (userInfo.mbti) result += "🧠 MBTI: " + userInfo.mbti + "\n";
-  if (userInfo.introduction) result += "💬 자기소개: " + userInfo.introduction + "\n";
+  if (userInfo.hobby) result += "🎯 취미: " + userInfo.hobby + "\n";
+  if (userInfo.drinkingCapacity) result += "🍺 주량: " + userInfo.drinkingCapacity + "\n";
+  if (userInfo.birthday) result += "🎂 생일: " + userInfo.birthday + "\n";
+  if (userInfo.availableDays) result += "📆 참석 가능한 날: " + userInfo.availableDays + "\n";
+  if (userInfo.joinPath) result += "🚪 들어온 경로: " + userInfo.joinPath + "\n";
   
   // 동적 필드들 표시 (기본 필드가 아닌 모든 필드)
-  var basicFields = ["name", "age", "gender", "location", "hobby", "mbti", "introduction", "lastUpdate"];
+  var basicFields = ["nickname", "joinDate", "workTime", "workLocation", "mbti", "hobby", "drinkingCapacity", "birthday", "availableDays", "joinPath", "lastUpdate"];
   var hasCustomFields = false;
   
   for (var key in userInfo) {
@@ -56,26 +59,35 @@ function parseUserInfo(infoText) {
     
     // 기본 필드들 (기존 호환성 유지)
     switch (key) {
-      case "이름":
-        userInfo.name = value;
+      case "닉네임":
+        userInfo.nickname = value;
         break;
-      case "나이":
-        userInfo.age = value;
+      case "들어온 날짜":
+        userInfo.joinDate = value;
         break;
-      case "성별":
-        userInfo.gender = value;
+      case "출퇴근 시간":
+        userInfo.workTime = value;
         break;
-      case "지역":
-        userInfo.location = value;
-        break;
-      case "취미":
-        userInfo.hobby = value;
+      case "직장 지역":
+        userInfo.workLocation = value;
         break;
       case "MBTI":
         userInfo.mbti = value;
         break;
-      case "자기소개":
-        userInfo.introduction = value;
+      case "취미":
+        userInfo.hobby = value;
+        break;
+      case "주량":
+        userInfo.drinkingCapacity = value;
+        break;
+      case "생일":
+        userInfo.birthday = value;
+        break;
+      case "참석 가능한 날":
+        userInfo.availableDays = value;
+        break;
+      case "들어온 경로":
+        userInfo.joinPath = value;
         break;
       default:
         // 동적 필드: 사용자가 정의한 모든 필드를 자동으로 저장

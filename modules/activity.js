@@ -69,6 +69,14 @@ function getTodayKey() {
   return year + "-" + month + "-" + day;
 }
 
+// 레벨업 축하 메시지 표시
+function showLevelUpMessage(room, userId, oldLevel, newLevel) {
+  if (globalReplier && newLevel > oldLevel) {
+    var message = "🎉 축하합니다! " + userId + "님이 레벨 " + oldLevel + "에서 레벨 " + newLevel + "로 레벨업했습니다! 🎉";
+    globalReplier.reply(message);
+  }
+}
+
 // 사용자 채팅 기록 (메시지마다 호출)
 function recordChat(room, userId) {
   var activityData = loadActivityData(room);
@@ -83,6 +91,9 @@ function recordChat(room, userId) {
       joinDate: new Date().toISOString()
     };
   }
+  
+  // 이전 레벨 저장 (레벨업 감지용)
+  var oldLevel = activityData.users[userId].level;
   
   // 일일 통계 초기화
   if (!activityData.dailyStats[todayKey]) {
@@ -100,7 +111,13 @@ function recordChat(room, userId) {
   activityData.users[userId].exp += 0.05;
   
   // 레벨 업데이트 (경험치 기반으로 자동 계산)
-  activityData.users[userId].level = getLevelFromExp(activityData.users[userId].exp);
+  var newLevel = getLevelFromExp(activityData.users[userId].exp);
+  activityData.users[userId].level = newLevel;
+  
+  // 레벨업 감지 및 축하 메시지
+  if (newLevel > oldLevel) {
+    showLevelUpMessage(room, userId, oldLevel, newLevel);
+  }
   
   saveActivityData(room, activityData);
 }
@@ -119,11 +136,20 @@ function addExp(room, userId, expAmount) {
     };
   }
   
+  // 이전 레벨 저장 (레벨업 감지용)
+  var oldLevel = activityData.users[userId].level;
+  
   // EXP 추가
   activityData.users[userId].exp += expAmount;
   
   // 레벨 업데이트
-  activityData.users[userId].level = getLevelFromExp(activityData.users[userId].exp);
+  var newLevel = getLevelFromExp(activityData.users[userId].exp);
+  activityData.users[userId].level = newLevel;
+  
+  // 레벨업 감지 및 축하 메시지
+  if (newLevel > oldLevel) {
+    showLevelUpMessage(room, userId, oldLevel, newLevel);
+  }
   
   saveActivityData(room, activityData);
   return true;

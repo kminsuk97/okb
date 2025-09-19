@@ -133,13 +133,14 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   if (msg.startsWith("!양도")) {
     var parts = msg.split(" ");
     
-    if (parts.length !== 3) {
+    if (parts.length < 3) {
       replier.reply("❌ 사용법: !양도 [받을사람] [포인트]\n예시: !양도 홍길동 100");
       return;
     }
     
-    var toUser = parts[1];
-    var points = parseInt(parts[2]);
+    // 마지막 부분을 포인트로, 나머지를 받을 사람으로 처리
+    var points = parseInt(parts[parts.length - 1]);
+    var toUser = parts.slice(1, -1).join(" ").trim();
     
     if (isNaN(points) || points <= 0) {
       replier.reply("❌ 포인트는 양수여야 합니다.");
@@ -218,12 +219,13 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     }
     
     var parts = msg.split(" ");
-    if (parts.length !== 2) {
+    if (parts.length < 2) {
       replier.reply("❌ 사용법: !관리자추가 [사용자]");
       return;
     }
     
-    var targetUser = parts[1];
+    // 첫 번째 공백 이후의 모든 내용을 사용자명으로 처리 (띄어쓰기 포함)
+    var targetUser = msg.substring(msg.indexOf(" ") + 1).trim();
     var addResult = admin.addAdmin(room, sender, targetUser);
     replier.reply(addResult.message);
   }
@@ -236,12 +238,13 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     }
     
     var parts = msg.split(" ");
-    if (parts.length !== 2) {
+    if (parts.length < 2) {
       replier.reply("❌ 사용법: !관리자삭제 [사용자]");
       return;
     }
     
-    var targetUser = parts[1];
+    // 첫 번째 공백 이후의 모든 내용을 사용자명으로 처리 (띄어쓰기 포함)
+    var targetUser = msg.substring(msg.indexOf(" ") + 1).trim();
     var removeResult = admin.removeAdmin(room, sender, targetUser);
     replier.reply(removeResult.message);
   }
@@ -254,12 +257,13 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     }
     
     var parts = msg.split(" ");
-    if (parts.length !== 2) {
+    if (parts.length < 2) {
       replier.reply("❌ 사용법: !정보 [사용자]");
       return;
     }
     
-    var targetUser = parts[1];
+    // 첫 번째 공백 이후의 모든 내용을 사용자명으로 처리 (띄어쓰기 포함)
+    var targetUser = msg.substring(msg.indexOf(" ") + 1).trim();
     var userInfo = myinfo.getAdminUserInfo(room, targetUser);
     replier.reply(userInfo);
   }
@@ -273,15 +277,44 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     
     var parts = msg.split(" ");
     if (parts.length < 3) {
-      replier.reply("❌ 사용법: !정보등록 [사용자] [키:값]\n예시: !정보등록 홍길동 이름:홍길동 나이:25");
+      replier.reply("❌ 사용법: !정보등록 [사용자] [키:값]\n예시: !정보등록 사용자명 이름:홍길동 나이:25");
       return;
     }
     
-    var targetUser = parts[1];
-    var infoText = msg.substring(msg.indexOf(" ", msg.indexOf(" ") + 1) + 1).trim();
+    // 첫 번째 공백 이후의 내용에서 사용자명과 정보를 분리
+    var afterFirstSpace = msg.substring(msg.indexOf(" ") + 1).trim();
+    
+    // 콜론(:)이 포함된 첫 번째 부분을 찾아서 정보와 사용자명을 분리
+    var colonIndex = afterFirstSpace.indexOf(":");
+    if (colonIndex === -1) {
+      replier.reply("❌ 정보 형식이 올바르지 않습니다.\n예시: !정보등록 사용자명 이름:홍길동 나이:25");
+      return;
+    }
+    
+    // 콜론 이전의 내용을 단어별로 분리하여 사용자명 찾기
+    var beforeColon = afterFirstSpace.substring(0, colonIndex).trim();
+    var words = beforeColon.split(" ");
+    
+    // 콜론이 포함된 단어를 찾아서 사용자명과 정보를 분리
+    var userWords = [];
+    var infoStartIndex = 0;
+    
+    for (var i = 0; i < words.length; i++) {
+      if (words[i].includes(":")) {
+        // 콜론이 포함된 단어를 찾았으면, 이 단어부터 정보 시작
+        infoStartIndex = beforeColon.indexOf(words[i]);
+        break;
+      }
+      userWords.push(words[i]);
+    }
+    
+    // 사용자명 (콜론이 포함되지 않은 단어들)
+    var targetUser = userWords.join(" ").trim();
+    // 정보 (콜론이 포함된 단어부터 끝까지)
+    var infoText = afterFirstSpace.substring(infoStartIndex).trim();
     
     if (!infoText) {
-      replier.reply("❌ 정보를 입력해주세요.\n예시: !정보등록 홍길동 이름:홍길동 나이:25");
+      replier.reply("❌ 정보를 입력해주세요.\n예시: !정보등록 사용자명 이름:홍길동 나이:25");
       return;
     }
     

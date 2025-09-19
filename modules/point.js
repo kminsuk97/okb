@@ -83,9 +83,45 @@ function addUserPoints(room, userId, points) {
   return newPoints;
 }
 
+// 사용자가 채팅방에 존재하는지 확인
+function isUserExists(room, userId) {
+  // 활동 데이터에서 사용자 존재 여부 확인
+  try {
+    var activityData = loadActivityData(room);
+    return activityData.users && activityData.users[userId];
+  } catch (error) {
+    return false;
+  }
+}
+
+// 활동 데이터 로드 (사용자 존재 확인용)
+function loadActivityData(room) {
+  try {
+    var fileName = "activity_" + room + ".json";
+    var filePath = DATA_DIR + fileName;
+    
+    var data = FileStream.read(filePath);
+    if (data && data !== "") {
+      return JSON.parse(data);
+    }
+    
+    return { users: {}, dailyStats: {} };
+  } catch (error) {
+    return { users: {}, dailyStats: {} };
+  }
+}
+
 // 포인트 양도
 function transferPoints(room, fromUserId, toUserId, points) {
   var pointData = loadPointData(room);
+  
+  // 받는 사용자가 채팅방에 존재하는지 확인
+  if (!isUserExists(room, toUserId)) {
+    return {
+      success: false,
+      message: "해당 유저는 채팅방에 없습니다. 닉네임을 확인해주세요."
+    };
+  }
   
   // 보내는 사람 포인트 확인
   var fromUserPoints = getUserPoints(room, fromUserId);
