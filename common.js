@@ -6,6 +6,7 @@ var activity = require('activity'); // 활동 시스템 모듈
 var point = require('point'); // 포인트 시스템 모듈
 var attendance = require('attendance'); // 출석 시스템 모듈
 var admin = require('admin'); // 관리자 시스템 모듈
+var jackpot = require('jackpot'); // 잭팟 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -15,6 +16,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     point.setReplier(replier);
     attendance.setReplier(replier);
     admin.setReplier(replier);
+    jackpot.setReplier(replier);
     dataManager._replierSet = true;
   }
   
@@ -23,6 +25,16 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     dataManager.saveChatMessage(room, sender, msg);
     // 활동 시스템에 채팅 기록
     activity.recordChat(room, sender);
+    
+    // 잭팟 시스템 시도
+    var jackpotResult = jackpot.tryJackpot(room, sender);
+    if (jackpotResult.success) {
+      // 포인트 지급
+      point.addUserPoints(room, sender, jackpotResult.reward);
+      
+      // 잭팟 당첨 메시지
+      replier.reply("🎰 [" + sender + "] " + jackpotResult.message);
+    }
   }
   
   // !도움말 명령어 처리
@@ -54,6 +66,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     adminHelpText += "➖ !관리자삭제 [사용자] - 관리자 삭제\n";
     adminHelpText += "👤 !정보 [사용자] - 다른 사용자 정보 조회\n";
     adminHelpText += "📝 !정보등록 [사용자] [키:값] - 다른 사용자 정보 등록/수정\n";
+    adminHelpText += "🎰 !잭팟 [쿨다운분] [확률%] [최소보상] [최대보상] - 잭팟 설정 변경\n";
     adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
     
     replier.reply(adminHelpText);
@@ -263,6 +276,33 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     
     var result = myinfo.setAdminUserInfo(room, targetUser, infoText);
     replier.reply(result);
+  }
+  
+  // !잭팟 [쿨다운분] [확률%] [최소보상] [최대보상] 명령어 처리 (관리자만)
+  if (msg.startsWith("!잭팟 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 잭팟 설정을 변경할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length !== 5) {
+      replier.reply("❌ 사용법: !잭팟 [쿨다운분] [확률%] [최소보상] [최대보상]\n예시: !잭팟 30 1 10 50");
+      return;
+    }
+    
+    var cooldownMinutes = parseInt(parts[1]);
+    var chancePercent = parseFloat(parts[2]);
+    var minReward = parseInt(parts[3]);
+    var maxReward = parseInt(parts[4]);
+    
+    if (isNaN(cooldownMinutes) || isNaN(chancePercent) || isNaN(minReward) || isNaN(maxReward)) {
+      replier.reply("❌ 모든 값은 숫자여야 합니다.");
+      return;
+    }
+    
+    var result = jackpot.setJackpotSettings(room, cooldownMinutes, chancePercent, minReward, maxReward);
+    replier.reply(result.message);
   }
   
 }
