@@ -96,9 +96,27 @@ function transferPoints(room, fromUserId, toUserId, points) {
     };
   }
   
+  // 사용자 데이터 초기화
+  if (!pointData.users[fromUserId]) {
+    pointData.users[fromUserId] = {
+      points: 0,
+      joinDate: new Date().toISOString()
+    };
+  }
+  if (!pointData.users[toUserId]) {
+    pointData.users[toUserId] = {
+      points: 0,
+      joinDate: new Date().toISOString()
+    };
+  }
+  
   // 포인트 차감 및 추가
-  var newFromPoints = addUserPoints(room, fromUserId, -points);
-  var newToPoints = addUserPoints(room, toUserId, points);
+  var newFromPoints = fromUserPoints - points;
+  var newToPoints = pointData.users[toUserId].points + points;
+  
+  // 포인트 업데이트
+  pointData.users[fromUserId].points = newFromPoints;
+  pointData.users[toUserId].points = newToPoints;
   
   // 거래 기록 추가
   var transaction = {
@@ -107,6 +125,10 @@ function transferPoints(room, fromUserId, toUserId, points) {
     points: points,
     timestamp: new Date().toISOString()
   };
+  
+  if (!pointData.transactions) {
+    pointData.transactions = [];
+  }
   
   pointData.transactions.push(transaction);
   
