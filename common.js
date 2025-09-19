@@ -5,6 +5,7 @@ var dataManager = require('dataManager'); // 데이터 관리 모듈
 var activity = require('activity'); // 활동 시스템 모듈
 var point = require('point'); // 포인트 시스템 모듈
 var attendance = require('attendance'); // 출석 시스템 모듈
+var admin = require('admin'); // 관리자 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -13,6 +14,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     activity.setReplier(replier);
     point.setReplier(replier);
     attendance.setReplier(replier);
+    admin.setReplier(replier);
     dataManager._replierSet = true;
   }
   
@@ -36,6 +38,27 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     
     replier.reply(helpText);
   }
+  
+  // !관리자도움말 명령어 처리 (관리자만)
+  if (msg === "!관리자도움말") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 관리자 도움말을 조회할 수 있습니다.");
+      return;
+    }
+    
+    var adminHelpText = "👑 관리자 전용 명령어 도움말\n";
+    adminHelpText += "━━━━━━━━━━━━━━━━━━━━\n";
+    adminHelpText += "👑 !관리자초기등록 - 관리자 시스템 초기화 (최초 1회)\n";
+    adminHelpText += "👥 !관리자목록 - 관리자 목록 조회\n";
+    adminHelpText += "➕ !관리자추가 [사용자] - 관리자 추가\n";
+    adminHelpText += "➖ !관리자삭제 [사용자] - 관리자 삭제\n";
+    adminHelpText += "👤 !정보 [사용자] - 다른 사용자 정보 조회\n";
+    adminHelpText += "📝 !정보등록 [사용자] [키:값] - 다른 사용자 정보 등록/수정\n";
+    adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
+    
+    replier.reply(adminHelpText);
+  }
+  
   // !내정보 명령어 처리
   if (msg === "!내정보") {
     var userInfo = myinfo.getUserInfo(room, sender);
@@ -144,6 +167,102 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     } else {
       replier.reply("❌ " + attendanceResult.message);
     }
+  }
+  
+  // !관리자초기등록 명령어 처리
+  if (msg === "!관리자초기등록") {
+    var initResult = admin.initializeAdmin(room, sender);
+    replier.reply(initResult.message);
+  }
+  
+  // !관리자목록 명령어 처리 (관리자만)
+  if (msg === "!관리자목록") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 관리자 목록을 조회할 수 있습니다.");
+      return;
+    }
+    
+    var listResult = admin.getAdminList(room);
+    replier.reply(listResult.message);
+  }
+  
+  // !관리자추가 [사용자] 명령어 처리
+  if (msg.startsWith("!관리자추가 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 다른 사용자를 관리자로 추가할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length !== 2) {
+      replier.reply("❌ 사용법: !관리자추가 [사용자]");
+      return;
+    }
+    
+    var targetUser = parts[1];
+    var addResult = admin.addAdmin(room, sender, targetUser);
+    replier.reply(addResult.message);
+  }
+  
+  // !관리자삭제 [사용자] 명령어 처리
+  if (msg.startsWith("!관리자삭제 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 관리자를 삭제할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length !== 2) {
+      replier.reply("❌ 사용법: !관리자삭제 [사용자]");
+      return;
+    }
+    
+    var targetUser = parts[1];
+    var removeResult = admin.removeAdmin(room, sender, targetUser);
+    replier.reply(removeResult.message);
+  }
+  
+  // !정보 [사용자] 명령어 처리 (관리자만)
+  if (msg.startsWith("!정보 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 다른 사용자의 정보를 조회할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length !== 2) {
+      replier.reply("❌ 사용법: !정보 [사용자]");
+      return;
+    }
+    
+    var targetUser = parts[1];
+    var userInfo = myinfo.getAdminUserInfo(room, targetUser);
+    replier.reply(userInfo);
+  }
+  
+  // !정보등록 [사용자] [키:값] 명령어 처리 (관리자만)
+  if (msg.startsWith("!정보등록 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 다른 사용자의 정보를 수정할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length < 3) {
+      replier.reply("❌ 사용법: !정보등록 [사용자] [키:값]\n예시: !정보등록 홍길동 이름:홍길동 나이:25");
+      return;
+    }
+    
+    var targetUser = parts[1];
+    var infoText = msg.substring(msg.indexOf(" ", msg.indexOf(" ") + 1) + 1).trim();
+    
+    if (!infoText) {
+      replier.reply("❌ 정보를 입력해주세요.\n예시: !정보등록 홍길동 이름:홍길동 나이:25");
+      return;
+    }
+    
+    var result = myinfo.setAdminUserInfo(room, targetUser, infoText);
+    replier.reply(result);
   }
   
 }

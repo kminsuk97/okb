@@ -87,11 +87,42 @@ function parseUserInfo(infoText) {
   return userInfo;
 }
 
+// 관리자용 사용자 정보 조회
+function getAdminUserInfo(room, targetUserId) {
+  var userInfo = dataManager.getUserInfo(room, targetUserId);
+  var formattedInfo = formatUserInfo(userInfo);
+  
+  if (userInfo) {
+    return "👤 " + targetUserId + "님의 정보\n" + formattedInfo;
+  } else {
+    return "❌ " + targetUserId + "님의 등록된 정보가 없습니다.";
+  }
+}
+
+// 관리자용 사용자 정보 등록/수정
+function setAdminUserInfo(room, targetUserId, infoText) {
+  // 기존 정보 가져오기
+  var existingInfo = dataManager.getUserInfo(room, targetUserId) || {};
+  
+  // 새 정보 파싱
+  var newUserInfo = parseUserInfo(infoText);
+  
+  // 기존 정보와 새 정보 병합
+  var mergedInfo = Object.assign({}, existingInfo, newUserInfo);
+  
+  // 정보 저장
+  dataManager.saveUserInfo(room, targetUserId, mergedInfo);
+  
+  return "✅ " + targetUserId + "님의 정보가 성공적으로 추가/수정되었습니다!";
+}
+
 // 아래와 같이 반드시 "키: 값" 쌍으로 객체 반환
 module.exports = {
   saveUserInfo: dataManager.saveUserInfo,
   getUserInfo: dataManager.getUserInfo,
   getAllUsersInRoom: dataManager.getAllUsersInRoom,
   formatUserInfo: formatUserInfo,
-  parseUserInfo: parseUserInfo
+  parseUserInfo: parseUserInfo,
+  getAdminUserInfo: getAdminUserInfo,
+  setAdminUserInfo: setAdminUserInfo
 };
