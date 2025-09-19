@@ -56,28 +56,6 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     myinfo.saveUserInfo(room, sender, mergedInfo);
     replier.reply("✅ 정보가 성공적으로 추가/수정되었습니다!\n!내정보 명령어로 확인할 수 있습니다.");
   }
-  
-  // !내정보수정 명령어 처리 (기존 정보에 추가/수정)
-  if (msg.startsWith("!내정보수정")) {
-    var modifyText = msg.replace("!내정보수정", "").trim();
-    
-    if (!modifyText) {
-      replier.reply("❌ 사용법: !내정보수정 이름:홍길동 나이:25\n\n💡 팁: 새로운 필드도 자유롭게 추가할 수 있습니다!\n예: !내정보수정 최근방문일:9월11일 좋아하는음식:치킨");
-      return;
-    }
-    
-    // 기존 정보 가져오기
-    var existingInfo = myinfo.getUserInfo(room, sender) || {};
-    
-    // 새 정보 파싱하여 기존 정보에 병합
-    var newInfo = myinfo.parseUserInfo(modifyText);
-    var updatedInfo = Object.assign({}, existingInfo, newInfo);
-    
-    // 수정된 정보 저장
-    myinfo.saveUserInfo(room, sender, updatedInfo);
-    replier.reply("✅ 정보가 성공적으로 수정되었습니다!\n!내정보 명령어로 확인할 수 있습니다.");
-  }
-  
   // !대화통계 명령어 처리
   if (msg === "!대화통계") {
     var stats = dataManager.getChatStats(room);
