@@ -4,13 +4,15 @@ var myinfo = require('myinfo'); // 사용자 정보 관리 모듈
 var dataManager = require('dataManager'); // 데이터 관리 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
+  // Replier 객체를 dataManager에 주입 (최초 1회만)
+  if (!dataManager._replierSet) {
+    dataManager.setReplier(replier);
+    dataManager._replierSet = true;
+  }
+  
   // 모든 메시지를 대화 데이터로 저장 (명령어가 아닌 경우만)
   if (!msg.startsWith("!")) {
     dataManager.saveChatMessage(room, sender, msg);
-  }
-  
-  if (msg === "!hello") {
-    replier.reply(utils.helloMessage(sender));
   }
   
   // !도움말 명령어 처리
@@ -19,14 +21,10 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "━━━━━━━━━━━━━━━━━━━━\n";
     helpText += "📋 !내정보 - 내 정보 조회\n";
     helpText += "📝 !내정보등록 [정보] - 정보 추가/수정 (기존 정보 유지)\n";
-    helpText += "✏️ !내정보수정 [정보] - 정보 추가/수정 (기존 정보 유지)\n";
-    helpText += "📊 !대화통계 - 방 대화 통계 조회\n";
-    helpText += "💬 !최근대화 [숫자] - 최근 대화 내역 조회\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
   }
-  
   // !내정보 명령어 처리
   if (msg === "!내정보") {
     var userInfo = myinfo.getUserInfo(room, sender);
@@ -56,51 +54,5 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     myinfo.saveUserInfo(room, sender, mergedInfo);
     replier.reply("✅ 정보가 성공적으로 추가/수정되었습니다!\n!내정보 명령어로 확인할 수 있습니다.");
   }
-  // !대화통계 명령어 처리
-  if (msg === "!대화통계") {
-    var stats = dataManager.getChatStats(room);
-    
-    var result = "📊 대화 통계\n";
-    result += "━━━━━━━━━━━━━━━━━━━━\n";
-    result += "💬 총 메시지 수: " + stats.totalMessages + "개\n";
-    result += "👥 참여 사용자: " + stats.uniqueUsers + "명\n";
-    
-    if (stats.lastMessage) {
-      var lastMsg = stats.lastMessage;
-      var lastTime = new Date(lastMsg.timestamp).toLocaleString('ko-KR');
-      result += "🕐 마지막 메시지: " + lastTime + "\n";
-      result += "👤 마지막 발신자: " + lastMsg.sender;
-    }
-    
-    replier.reply(result);
-  }
   
-  // !최근대화 명령어 처리 (예시: !최근대화 10)
-  if (msg.startsWith("!최근대화")) {
-    var parts = msg.split(" ");
-    var limit = parts.length > 1 ? parseInt(parts[1]) : 10;
-    
-    if (isNaN(limit) || limit < 1 || limit > 50) {
-      replier.reply("❌ 사용법: !최근대화 [1-50]\n예시: !최근대화 10");
-      return;
-    }
-    
-    var messages = dataManager.getChatMessages(room, limit);
-    
-    if (messages.length === 0) {
-      replier.reply("📭 저장된 대화가 없습니다.");
-      return;
-    }
-    
-    var chatResult = "📝 최근 " + messages.length + "개 대화\n";
-    chatResult += "━━━━━━━━━━━━━━━━━━━━\n";
-    
-    for (var i = 0; i < messages.length; i++) {
-      var message = messages[i];
-      var time = new Date(message.timestamp).toLocaleString('ko-KR');
-      chatResult += (i + 1) + ". [" + time + "] " + message.sender + ": " + message.message + "\n";
-    }
-    
-    replier.reply(chatResult);
-  }
 }

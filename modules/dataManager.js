@@ -1,30 +1,46 @@
 // modules/dataManager.js
-// 메신저봇R 환경에서는 파일 시스템 접근이 제한적이므로 메모리 기반으로 데이터 관리
+// 메신저봇R FileStream API 기반 데이터 저장
 
-// 메모리 기반 데이터 저장소
-var roomDataStorage = {};
+// 전역 Replier 객체 (common.js에서 주입받음)
+var globalReplier = null;
 
-// 방별 데이터 로드 (메모리에서)
-function loadRoomData(room, dataType) {
-  if (!roomDataStorage[room]) {
-    roomDataStorage[room] = {};
-  }
-  
-  if (!roomDataStorage[room][dataType]) {
-    roomDataStorage[room][dataType] = {};
-  }
-  
-  return roomDataStorage[room][dataType];
+// 데이터 저장 경로
+var DATA_DIR = "/sdcard/DataBase/";
+
+// Replier 객체 설정 (common.js에서 호출)
+function setReplier(replier) {
+  globalReplier = replier;
 }
 
-// 방별 데이터 저장 (메모리에)
-function saveRoomData(room, dataType, data) {
-  if (!roomDataStorage[room]) {
-    roomDataStorage[room] = {};
+// 방별 데이터 로드 (FileStream에서)
+function loadRoomData(room, dataType) {
+  try {
+    var fileName = "room_" + room + "_" + dataType + ".json";
+    var filePath = DATA_DIR + fileName;
+    
+    var data = FileStream.read(filePath);
+    if (data && data !== "") {
+      return JSON.parse(data);
+    }
+    
+    return {};
+  } catch (error) {
+    return {};
   }
-  
-  roomDataStorage[room][dataType] = data;
-  return true;
+}
+
+// 방별 데이터 저장 (FileStream에)
+function saveRoomData(room, dataType, data) {
+  try {
+    var fileName = "room_" + room + "_" + dataType + ".json";
+    var filePath = DATA_DIR + fileName;
+    var jsonData = JSON.stringify(data, null, 2);
+    
+    FileStream.write(filePath, jsonData);
+    return true;
+  } catch (error) {
+    return false;
+  }
 }
 
 // 사용자 정보 관련 함수들
@@ -119,22 +135,30 @@ function getChatStats(room) {
   };
 }
 
-// 방 목록 조회 (메모리에서)
+// 방 목록 조회 (파일에서)
 function getRoomList() {
-  return Object.keys(roomDataStorage);
+  // 파일 기반에서는 방 목록을 직접 조회하기 어려우므로 빈 배열 반환
+  return [];
 }
 
-// 방 데이터 삭제 (메모리에서)
+// 방 데이터 삭제 (FileStream에서)
 function deleteRoomData(room, dataType) {
-  if (roomDataStorage[room] && roomDataStorage[room][dataType]) {
-    delete roomDataStorage[room][dataType];
+  try {
+    var fileName = "room_" + room + "_" + dataType + ".json";
+    var filePath = DATA_DIR + fileName;
+    
+    FileStream.remove(filePath);
     return true;
+  } catch (error) {
+    return false;
   }
-  return true; // 데이터가 없으면 성공으로 간주
 }
 
 // 아래와 같이 반드시 "키: 값" 쌍으로 객체 반환
 module.exports = {
+  // Replier 설정
+  setReplier: setReplier,
+  
   // 기본 데이터 관리
   loadRoomData: loadRoomData,
   saveRoomData: saveRoomData,
