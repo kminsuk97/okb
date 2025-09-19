@@ -38,48 +38,49 @@ function formatUserInfo(userInfo) {
   return result;
 }
 
-// 사용자 정보 파싱 (등록/수정용) - 동적 필드 지원
+// 사용자 정보 파싱 (등록/수정용) - 동적 필드 지원, 공백 허용
 function parseUserInfo(infoText) {
   var userInfo = {};
-  var pairs = infoText.split(" ");
   
-  for (var i = 0; i < pairs.length; i++) {
-    var pair = pairs[i];
-    if (pair.indexOf(":") !== -1) {
-      var parts = pair.split(":", 2);
-      var key = parts[0];
-      var value = parts[1];
-      var cleanKey = key.trim();
-      var cleanValue = value.trim();
-      
-      // 기본 필드들 (기존 호환성 유지)
-      switch (cleanKey) {
-        case "이름":
-          userInfo.name = cleanValue;
-          break;
-        case "나이":
-          userInfo.age = cleanValue;
-          break;
-        case "성별":
-          userInfo.gender = cleanValue;
-          break;
-        case "지역":
-          userInfo.location = cleanValue;
-          break;
-        case "취미":
-          userInfo.hobby = cleanValue;
-          break;
-        case "MBTI":
-          userInfo.mbti = cleanValue;
-          break;
-        case "자기소개":
-          userInfo.introduction = cleanValue;
-          break;
-        default:
-          // 동적 필드: 사용자가 정의한 모든 필드를 자동으로 저장
-          userInfo[cleanKey] = cleanValue;
-          break;
-      }
+  // 가장 간단한 방법: 첫 번째 콜론을 기준으로 키와 값 분리
+  var colonIndex = infoText.indexOf(":");
+  
+  if (colonIndex !== -1) {
+    // 키 추출 (콜론 앞의 마지막 단어)
+    var keyPart = infoText.substring(0, colonIndex).trim();
+    var keyWords = keyPart.split(" ");
+    var key = keyWords[keyWords.length - 1];
+    
+    // 값 추출 (콜론 뒤의 모든 내용, 공백 포함)
+    var value = infoText.substring(colonIndex + 1).trim();
+    
+    // 기본 필드들 (기존 호환성 유지)
+    switch (key) {
+      case "이름":
+        userInfo.name = value;
+        break;
+      case "나이":
+        userInfo.age = value;
+        break;
+      case "성별":
+        userInfo.gender = value;
+        break;
+      case "지역":
+        userInfo.location = value;
+        break;
+      case "취미":
+        userInfo.hobby = value;
+        break;
+      case "MBTI":
+        userInfo.mbti = value;
+        break;
+      case "자기소개":
+        userInfo.introduction = value;
+        break;
+      default:
+        // 동적 필드: 사용자가 정의한 모든 필드를 자동으로 저장
+        userInfo[key] = value;
+        break;
     }
   }
   
