@@ -9,6 +9,7 @@ var admin = require('admin'); // 관리자 시스템 모듈
 var jackpot = require('jackpot'); // 잭팟 시스템 모듈
 var shop = require('shop'); // 상점 시스템 모듈
 var ranking = require('ranking'); // 랭킹 시스템 모듈
+var gambling = require('gambling'); // 베팅 게임 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -21,6 +22,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     jackpot.setReplier(replier);
     shop.setReplier(replier);
     ranking.setReplier(replier);
+    gambling.setReplier(replier);
     ranking.setModules(activity, point);
     dataManager._replierSet = true;
   }
@@ -54,9 +56,14 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "🛒 !상점 - 상점 목록 조회\n";
     helpText += "🛍️ !구매 [아이템명] - 아이템 구매\n";
     helpText += "📦 !구매목록 - 내 구매 목록 조회\n";
+    helpText += "🎁 !아이템사용 [아이템명] - 구매한 아이템 사용\n";
+    helpText += "📋 !사용목록 - 사용한 아이템 목록 조회\n";
     helpText += "📊 !랭킹 - 금일 채팅 랭킹 TOP 20\n";
     helpText += "💰 !포인트랭킹 - 포인트 랭킹 TOP 20\n";
     helpText += "⭐ !레벨랭킹 - 레벨 랭킹 TOP 20\n";
+    helpText += "🎰 !게임설명 - 베팅 게임 설명\n";
+    helpText += "🎲 !베팅 [포인트] - 포인트 베팅 게임\n";
+    helpText += "📊 !베팅상태 - 베팅 상태 조회\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -79,6 +86,9 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     adminHelpText += "📝 !정보등록 [사용자] [키:값] - 다른 사용자 정보 등록/수정\n";
     adminHelpText += "💰 !포인트지급 [사용자] [포인트] - 사용자에게 포인트 지급\n";
     adminHelpText += "🎰 !잭팟 [쿨다운분] [확률%] [최소보상] [최대보상] - 잭팟 설정 변경\n";
+    adminHelpText += "🚫 !베팅중지 - 베팅 게임 중지\n";
+    adminHelpText += "✅ !베팅시작 - 베팅 게임 시작\n";
+    adminHelpText += "📊 !베팅횟수제한 [횟수] - 하루 베팅 횟수 제한 설정\n";
     adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
     
     replier.reply(adminHelpText);
@@ -384,6 +394,32 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     replier.reply(purchaseList);
   }
   
+  // !아이템사용 [아이템명] 명령어 처리
+  if (msg.startsWith("!아이템사용 ")) {
+    var parts = msg.split(" ");
+    if (parts.length < 2) {
+      replier.reply("❌ 사용법: !아이템사용 [아이템명]\n예시: !아이템사용 닉네임 지정권");
+      return;
+    }
+    
+    // 첫 번째 공백 이후의 모든 내용을 아이템명으로 처리 (띄어쓰기 포함)
+    var itemName = msg.substring(msg.indexOf(" ") + 1).trim();
+    
+    var useResult = shop.useItem(room, sender, itemName);
+    
+    if (useResult.success) {
+      replier.reply(useResult.message);
+    } else {
+      replier.reply(useResult.message);
+    }
+  }
+  
+  // !사용목록 명령어 처리
+  if (msg === "!사용목록") {
+    var usedItemsList = shop.getUserUsedItems(room, sender);
+    replier.reply(usedItemsList);
+  }
+  
   // !랭킹 명령어 처리 (일일 채팅 랭킹)
   if (msg === "!랭킹") {
     var rankingResult = ranking.giveDailyRewards(room);
@@ -411,6 +447,41 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   if (msg === "!레벨랭킹") {
     var levelRanking = ranking.getLevelRanking(room);
     replier.reply(levelRanking);
+  }
+  
+  // !게임설명 명령어 처리
+  if (msg === "!게임설명") {
+    var gameDescription = gambling.getGameDescription();
+    replier.reply(gameDescription);
+  }
+  
+  // !베팅 [포인트] 명령어 처리
+  if (msg.startsWith("!베팅 ")) {
+    var parts = msg.split(" ");
+    if (parts.length !== 2) {
+      replier.reply("❌ 사용법: !베팅 [포인트]\n예시: !베팅 100");
+      return;
+    }
+    
+    var betAmount = parseInt(parts[1]);
+    if (isNaN(betAmount) || betAmount <= 0) {
+      replier.reply("❌ 베팅 금액은 양수여야 합니다.");
+      return;
+    }
+    
+    var gameResult = gambling.playBettingGame(room, sender, betAmount);
+    
+    if (gameResult.success) {
+      replier.reply(gameResult.message);
+    } else {
+      replier.reply("❌ " + gameResult.message);
+    }
+  }
+  
+  // !베팅상태 명령어 처리
+  if (msg === "!베팅상태") {
+    var status = gambling.getBettingStatus(room);
+    replier.reply(status);
   }
   
   // !포인트지급 [사용자] [포인트] 명령어 처리 (관리자만)
@@ -444,6 +515,63 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
       replier.reply(result);
     } else {
       replier.reply("❌ " + giveResult.message);
+    }
+  }
+  
+  // !베팅중지 명령어 처리 (관리자만)
+  if (msg === "!베팅중지") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 베팅을 중지할 수 있습니다.");
+      return;
+    }
+    
+    var result = gambling.stopBetting(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !베팅시작 명령어 처리 (관리자만)
+  if (msg === "!베팅시작") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 베팅을 시작할 수 있습니다.");
+      return;
+    }
+    
+    var result = gambling.startBetting(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !베팅횟수제한 [횟수] 명령어 처리 (관리자만)
+  if (msg.startsWith("!베팅횟수제한 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 베팅 횟수 제한을 설정할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length !== 2) {
+      replier.reply("❌ 사용법: !베팅횟수제한 [횟수]\n예시: !베팅횟수제한 20");
+      return;
+    }
+    
+    var limit = parseInt(parts[1]);
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      replier.reply("❌ 베팅 횟수 제한은 1회 이상 100회 이하여야 합니다.");
+      return;
+    }
+    
+    var result = gambling.setDailyBettingLimit(room, limit, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
     }
   }
   
