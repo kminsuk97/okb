@@ -24,9 +24,40 @@ var SHOP_ITEMS = {
   "야자타임권": {
     name: "야자타임권",
     price: 800,
-    description: "🍕 30분동안 야자타임 개최권",
-    emoji: "🍕"
+    description: "💬 30분동안 야자타임 개최권",
+    emoji: "💬"
   },
+  "자리 배정권": {
+    name: "자리 배치 지정 1회권",
+    price: 400,
+    description: "🪑초기에 자리 배정할 수 있는 권한 부여",
+    emoji: "🪑"
+  },
+  "주류 선택권": {
+    name: "주류 선택권",
+    price: 500,
+    description: "🍺 각 차수마다 주류 선택 가능 (금액대 적당히)",
+    emoji: "🍺"
+  },
+  "안주 우선 선택권": {
+    name: "안주 우선 선택권",
+    price: 300,
+    description: "🍚 각 차수마다 안주 우선 선택 가능",
+    emoji: "🍚"
+  },
+  "옆자리 선정권": {
+    name: "옆자리 선정권",
+    price: 600,
+    description: "👥️ 각 차수마다 옆자리 선택 가능 (합석자 불편하지 않는 선에서)",
+    emoji: "👥️"
+  },
+  "지정 2인 강제 1일 커플권": {
+    name: "지정 2인 강제 1일 커플권",
+    price: 2000,
+    description: "💛 강제 1일 커플 만들기 (동성 가능, 연인이 있는경우 패스)",
+    emoji: "💛"
+  },
+
 };
 
 // Replier 객체 설정 (common.js에서 호출)
@@ -73,7 +104,7 @@ function getShopItems() {
 // 상점 목록 포맷팅
 function formatShopList() {
   var result = "🛒 상점 목록\n";
-  result += "━━━━━━━━━━━━━━━━━━━━\n";
+  result += "━━━━━━━━━━━\n";
   
   for (var itemId in SHOP_ITEMS) {
     if (SHOP_ITEMS.hasOwnProperty(itemId)) {
