@@ -80,6 +80,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "🎫 !로또수동 [번호] - 로또 수동 구매 (100P)\n";
     helpText += "📊 !로또상태 - 로또 상태 조회\n";
     helpText += "🎫 !내로또 - 내 로또 구매 내역\n";
+    helpText += "📖 !로또설명 - 로또 게임 설명 및 당첨금액\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -802,6 +803,12 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   if (msg === "!내로또") {
     var myLotto = lotto.getMyLotto(room, sender);
     replier.reply(myLotto);
+  }
+  
+  // !로또설명 명령어 처리
+  if (msg === "!로또설명") {
+    var description = lotto.getLottoDescription();
+    replier.reply(description);
   }
   
   // !로또발표 명령어 처리 (관리자만)

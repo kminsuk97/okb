@@ -104,6 +104,7 @@ function loadLottoData(room) {
       isDrawn: false,
       winners: {},
       lastDrawDate: null, // 마지막 발표 날짜
+      lastDrawWinnings: 0, // 마지막 발표 당첨금액
       autoDrawEnabled: false, // 자동 발표 활성화 상태
       roomStats: {
         totalTickets: 0,
@@ -120,6 +121,7 @@ function loadLottoData(room) {
       isDrawn: false,
       winners: {},
       lastDrawDate: null, // 마지막 발표 날짜
+      lastDrawWinnings: 0, // 마지막 발표 당첨금액
       autoDrawEnabled: false, // 자동 발표 활성화 상태
       roomStats: {
         totalTickets: 0,
@@ -500,6 +502,7 @@ function drawLotto(room, adminUserId) {
   }
   
   lottoData.winners = winners;
+  lottoData.lastDrawWinnings = totalWinnings; // 오늘 당첨금액 저장
   lottoData.roomStats.totalWinnings += totalWinnings;
   lottoData.roomStats.totalRounds++;
   
@@ -550,6 +553,7 @@ function getLottoStatus(room) {
   if (lottoData.lastDrawDate === today) {
     status += "📊 발표 상태: ✅ 오늘 발표 완료\n";
     status += "🎯 이전 회차 당첨번호: " + (lottoData.winningNumbers ? lottoData.winningNumbers.join(" ") : "없음") + "\n";
+    status += "💰 금일 당첨금액: " + (lottoData.lastDrawWinnings || 0) + "P\n";
     status += "📅 발표일: " + new Date(lottoData.drawDate).toLocaleString('ko-KR') + "\n";
   } else {
     status += "📊 발표 상태: ⏳ 발표 대기 중\n";
@@ -561,6 +565,31 @@ function getLottoStatus(room) {
   status += "🏆 총 회차: " + lottoData.roomStats.totalRounds + "회차";
   
   return status;
+}
+
+// 로또 게임 설명
+function getLottoDescription() {
+  var description = "🎫 로또 게임 설명\n";
+  description += "━━━━━━━━━━━━━\n";
+  description += "💰 구매 비용: 100P\n";
+  description += "🎯 번호 선택: 1~45 중 6개 번호\n";
+  description += "⏰ 발표 시간: 매일 오후 8시\n\n";
+  
+  description += "🏆 당첨 등수 및 상금:\n";
+  description += "🥇 1등 (6개 일치): 2,000,000P\n";
+  description += "🥈 2등 (5개 일치): 50,000P\n";
+  description += "🥉 3등 (4개 일치): 5,000P\n";
+  description += "🏅 4등 (3개 일치): 500P\n\n";
+  
+  description += "📋 명령어:\n";
+  description += "• !로또자동 - 자동 번호로 구매\n";
+  description += "• !로또수동 [번호] - 직접 번호 선택\n";
+  description += "• !로또상태 - 현재 상태 조회\n";
+  description += "• !내로또 - 내 구매 내역 확인\n\n";
+  
+  description += "🍀 행운을 빕니다!";
+  
+  return description;
 }
 
 // 내 로또 조회
@@ -682,6 +711,7 @@ module.exports = {
   // 조회
   getLottoStatus: getLottoStatus,
   getMyLotto: getMyLotto,
+  getLottoDescription: getLottoDescription,
   
   // 관리자 기능
   drawLotto: drawLotto,
