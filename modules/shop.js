@@ -57,6 +57,12 @@ var SHOP_ITEMS = {
     description: "💛 강제 1일 커플 만들기 (동성 가능, 연인이 있는경우 패스)",
     emoji: "💛"
   },
+  "드레스코드 설정권": {
+    name: "드레스코드 설정권",
+    price: 300,
+    description: "👗 컬러선택 컨셉옷 등등",
+    emoji: "👗"
+  },
 
 };
 
@@ -250,6 +256,99 @@ function getRoomPurchaseStats(room) {
   };
 }
 
+// 아이템 사용
+function useItem(room, userId, itemName) {
+  var purchaseData = loadPurchaseData(room);
+  
+  if (!purchaseData.users[userId] || purchaseData.users[userId].purchases.length === 0) {
+    return {
+      success: false,
+      message: "❌ 구매한 아이템이 없습니다."
+    };
+  }
+  
+  // 사용자가 구매한 아이템 중에서 해당 아이템 찾기
+  var userPurchases = purchaseData.users[userId].purchases;
+  var foundItem = null;
+  var itemIndex = -1;
+  
+  for (var i = userPurchases.length - 1; i >= 0; i--) {
+    if (userPurchases[i].itemName === itemName) {
+      foundItem = userPurchases[i];
+      itemIndex = i;
+      break;
+    }
+  }
+  
+  if (!foundItem) {
+    return {
+      success: false,
+      message: "❌ 해당 아이템을 구매하지 않았습니다.\n!구매목록 명령어로 구매한 아이템을 확인하세요."
+    };
+  }
+  
+  // 아이템 사용 처리 (구매 목록에서 제거)
+  userPurchases.splice(itemIndex, 1);
+  purchaseData.users[userId].totalSpent -= foundItem.price;
+  
+  // 사용 기록 추가
+  if (!purchaseData.users[userId].usedItems) {
+    purchaseData.users[userId].usedItems = [];
+  }
+  
+  var usedItem = {
+    itemName: foundItem.itemName,
+    itemEmoji: foundItem.itemEmoji,
+    price: foundItem.price,
+    usedAt: new Date().toISOString(),
+    usedDate: new Date().toLocaleString('ko-KR')
+  };
+  
+  purchaseData.users[userId].usedItems.push(usedItem);
+  
+  // 최대 100개 사용 기록만 보관
+  if (purchaseData.users[userId].usedItems.length > 100) {
+    purchaseData.users[userId].usedItems = purchaseData.users[userId].usedItems.slice(-100);
+  }
+  
+  savePurchaseData(room, purchaseData);
+  
+  return {
+    success: true,
+    message: "✅ 아이템 사용 완료!\n" + foundItem.itemEmoji + " " + foundItem.itemName + "을(를) 사용했습니다.",
+    item: foundItem
+  };
+}
+
+// 사용자 사용한 아이템 목록 조회
+function getUserUsedItems(room, userId) {
+  var purchaseData = loadPurchaseData(room);
+  
+  if (!purchaseData.users[userId] || !purchaseData.users[userId].usedItems || purchaseData.users[userId].usedItems.length === 0) {
+    return "📦 " + userId + "님의 사용한 아이템 목록이 비어있습니다.";
+  }
+  
+  var userData = purchaseData.users[userId];
+  var result = "📦 " + userId + "님의 사용한 아이템 목록\n";
+  result += "━━━━━━━━━━━━━━━━━━━━\n";
+  result += "📊 총 사용 횟수: " + userData.usedItems.length + "회\n\n";
+  
+  // 최근 10개 사용 기록만 표시
+  var recentUsedItems = userData.usedItems.slice(-10).reverse();
+  
+  for (var i = 0; i < recentUsedItems.length; i++) {
+    var usedItem = recentUsedItems[i];
+    result += usedItem.itemEmoji + " " + usedItem.itemName + " - " + usedItem.price + "P\n";
+    result += "   📅 " + usedItem.usedDate + "\n\n";
+  }
+  
+  if (userData.usedItems.length > 10) {
+    result += "... 외 " + (userData.usedItems.length - 10) + "개 더";
+  }
+  
+  return result;
+}
+
 // 구매 데이터 초기화 (관리자용)
 function resetPurchaseData(room) {
   var purchaseData = { users: {} };
@@ -268,6 +367,10 @@ module.exports = {
   purchaseItem: purchaseItem,
   getUserPurchases: getUserPurchases,
   getRoomPurchaseStats: getRoomPurchaseStats,
+  
+  // 아이템 사용 시스템
+  useItem: useItem,
+  getUserUsedItems: getUserUsedItems,
   
   // 관리자 기능
   resetPurchaseData: resetPurchaseData
