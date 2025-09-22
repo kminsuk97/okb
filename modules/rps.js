@@ -34,7 +34,8 @@ function loadRpsData(room) {
         winCount: 0,
         loseCount: 0,
         drawCount: 0
-      }
+      },
+      rpsEnabled: true
     };
   } catch (error) {
     return { 
@@ -48,7 +49,8 @@ function loadRpsData(room) {
         winCount: 0,
         loseCount: 0,
         drawCount: 0
-      }
+      },
+      rpsEnabled: true
     };
   }
 }
@@ -144,6 +146,17 @@ function playRpsGame(room, userId, userChoice, betAmount) {
     };
   }
   
+  // 가위바위보 데이터 로드 (게임 상태 확인용)
+  var rpsData = loadRpsData(room);
+  
+  // 가위바위보 중지 상태 확인
+  if (rpsData.rpsEnabled === false) {
+    return {
+      success: false,
+      message: "🚫 현재 가위바위보가 중지된 상태입니다. 관리자가 게임을 시작할 때까지 기다려주세요."
+    };
+  }
+  
   // 사용자 존재 확인
   if (!isUserExists(room, userId)) {
     return {
@@ -164,8 +177,6 @@ function playRpsGame(room, userId, userChoice, betAmount) {
     };
   }
   
-  // 가위바위보 데이터 로드
-  var rpsData = loadRpsData(room);
   
   // 사용자 통계 초기화
   if (!rpsData.userStats[userId]) {
@@ -429,6 +440,63 @@ function getRecentRpsGames(room, limit) {
   return result;
 }
 
+// 가위바위보 중지 (관리자 전용)
+function stopRps(room, adminUserId) {
+  var rpsData = loadRpsData(room);
+  rpsData.rpsEnabled = false;
+  
+  if (saveRpsData(room, rpsData)) {
+    return {
+      success: true,
+      message: "🚫 가위바위보가 중지되었습니다. 중요한 이야기 시간입니다."
+    };
+  } else {
+    return {
+      success: false,
+      message: "가위바위보 중지 설정에 실패했습니다."
+    };
+  }
+}
+
+// 가위바위보 시작 (관리자 전용)
+function startRps(room, adminUserId) {
+  var rpsData = loadRpsData(room);
+  rpsData.rpsEnabled = true;
+  
+  if (saveRpsData(room, rpsData)) {
+    return {
+      success: true,
+      message: "✅ 가위바위보가 시작되었습니다. 다시 게임을 즐기실 수 있습니다!"
+    };
+  } else {
+    return {
+      success: false,
+      message: "가위바위보 시작 설정에 실패했습니다."
+    };
+  }
+}
+
+// 가위바위보 상태 조회
+function getRpsStatus(room) {
+  var rpsData = loadRpsData(room);
+  var roomStats = rpsData.roomStats;
+  
+  var status = "✂️ 가위바위보 상태\n";
+  status += "━━━━━━━━━━━━━\n";
+  status += "📊 게임 상태: " + (rpsData.rpsEnabled !== false ? "✅ 활성화" : "🚫 중지") + "\n";
+  status += "🎮 총 게임 수: " + roomStats.totalGames + "회\n";
+  status += "🏆 총 승리: " + roomStats.winCount + "회\n";
+  status += "💸 총 패배: " + roomStats.loseCount + "회\n";
+  status += "🤝 총 무승부: " + roomStats.drawCount + "회\n";
+  status += "💰 총 베팅: " + roomStats.totalBets + "P";
+  
+  if (rpsData.rpsEnabled === false) {
+    status += "\n\n⚠️ 현재 가위바위보가 중지된 상태입니다.";
+  }
+  
+  return status;
+}
+
 // 아래와 같이 반드시 "키: 값" 쌍으로 객체 반환
 module.exports = {
   // Replier 설정
@@ -441,5 +509,10 @@ module.exports = {
   // 통계 및 조회
   getUserRpsStats: getUserRpsStats,
   getRoomRpsStats: getRoomRpsStats,
-  getRecentRpsGames: getRecentRpsGames
+  getRecentRpsGames: getRecentRpsGames,
+  getRpsStatus: getRpsStatus,
+  
+  // 관리자 기능
+  stopRps: stopRps,
+  startRps: startRps
 };
