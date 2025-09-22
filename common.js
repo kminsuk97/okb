@@ -77,6 +77,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     adminHelpText += "➖ !관리자삭제 [사용자] - 관리자 삭제\n";
     adminHelpText += "👤 !정보 [사용자] - 다른 사용자 정보 조회\n";
     adminHelpText += "📝 !정보등록 [사용자] [키:값] - 다른 사용자 정보 등록/수정\n";
+    adminHelpText += "💰 !포인트지급 [사용자] [포인트] - 사용자에게 포인트 지급\n";
     adminHelpText += "🎰 !잭팟 [쿨다운분] [확률%] [최소보상] [최대보상] - 잭팟 설정 변경\n";
     adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
     
@@ -410,6 +411,40 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   if (msg === "!레벨랭킹") {
     var levelRanking = ranking.getLevelRanking(room);
     replier.reply(levelRanking);
+  }
+  
+  // !포인트지급 [사용자] [포인트] 명령어 처리 (관리자만)
+  if (msg.startsWith("!포인트지급 ")) {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 포인트를 지급할 수 있습니다.");
+      return;
+    }
+    
+    var parts = msg.split(" ");
+    if (parts.length < 3) {
+      replier.reply("❌ 사용법: !포인트지급 [사용자] [포인트]\n예시: !포인트지급 사용자명 100");
+      return;
+    }
+    
+    // 마지막 부분을 포인트로, 나머지를 받을 사람으로 처리
+    var points = parseInt(parts[parts.length - 1]);
+    var targetUser = parts.slice(1, -1).join(" ").trim();
+    
+    if (isNaN(points) || points <= 0) {
+      replier.reply("❌ 포인트는 양수여야 합니다.");
+      return;
+    }
+    
+    var giveResult = point.adminGivePoints(room, targetUser, points, sender);
+    
+    if (giveResult.success) {
+      var result = "✅ " + giveResult.message + "\n";
+      result += "━━━━━━━━━━━━━\n";
+      result += "💰 현재 포인트: " + giveResult.newPoints + "P";
+      replier.reply(result);
+    } else {
+      replier.reply("❌ " + giveResult.message);
+    }
   }
   
 }

@@ -235,6 +235,68 @@ function resetAllPoints(room) {
   return true;
 }
 
+// 관리자용 포인트 지급
+function adminGivePoints(room, targetUserId, points, adminUserId) {
+  // 받는 사용자가 채팅방에 존재하는지 확인
+  if (!isUserExists(room, targetUserId)) {
+    return {
+      success: false,
+      message: "해당 유저는 채팅방에 없습니다. 닉네임을 확인해주세요."
+    };
+  }
+  
+  // 포인트 유효성 검사
+  if (points <= 0) {
+    return {
+      success: false,
+      message: "포인트는 양수여야 합니다."
+    };
+  }
+  
+  var pointData = loadPointData(room);
+  
+  // 사용자 데이터 초기화
+  if (!pointData.users[targetUserId]) {
+    pointData.users[targetUserId] = {
+      points: 0,
+      joinDate: new Date().toISOString()
+    };
+  }
+  
+  // 포인트 추가
+  var currentPoints = pointData.users[targetUserId].points || 0;
+  var newPoints = currentPoints + points;
+  pointData.users[targetUserId].points = newPoints;
+  
+  // 관리자 거래 기록 추가
+  var transaction = {
+    from: "관리자(" + adminUserId + ")",
+    to: targetUserId,
+    points: points,
+    timestamp: new Date().toISOString(),
+    type: "admin_give"
+  };
+  
+  if (!pointData.transactions) {
+    pointData.transactions = [];
+  }
+  
+  pointData.transactions.push(transaction);
+  
+  // 최대 100개 거래 기록만 보관
+  if (pointData.transactions.length > 100) {
+    pointData.transactions = pointData.transactions.slice(-100);
+  }
+  
+  savePointData(room, pointData);
+  
+  return {
+    success: true,
+    message: "포인트 지급 완료! " + targetUserId + "님에게 " + points + "P 지급",
+    newPoints: newPoints
+  };
+}
+
 // 아래와 같이 반드시 "키: 값" 쌍으로 객체 반환
 module.exports = {
   // Replier 설정
@@ -254,5 +316,6 @@ module.exports = {
   
   // 관리자 기능
   resetUserPoints: resetUserPoints,
-  resetAllPoints: resetAllPoints
+  resetAllPoints: resetAllPoints,
+  adminGivePoints: adminGivePoints
 };
