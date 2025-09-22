@@ -10,6 +10,7 @@ var jackpot = require('jackpot'); // 잭팟 시스템 모듈
 var shop = require('shop'); // 상점 시스템 모듈
 var ranking = require('ranking'); // 랭킹 시스템 모듈
 var gambling = require('gambling'); // 베팅 게임 시스템 모듈
+var rps = require('rps'); // 가위바위보 게임 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -23,6 +24,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     shop.setReplier(replier);
     ranking.setReplier(replier);
     gambling.setReplier(replier);
+    rps.setReplier(replier);
     ranking.setModules(activity, point);
     dataManager._replierSet = true;
   }
@@ -64,6 +66,8 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "🎰 !게임설명 - 베팅 게임 설명\n";
     helpText += "🎲 !베팅 [포인트] - 포인트 베팅 게임\n";
     helpText += "📊 !베팅상태 - 베팅 상태 조회\n";
+    helpText += "✂️ !가위바위보설명 - 가위바위보 게임 설명\n";
+    helpText += "✂️ !가위바위보 [묵/찌/빠] [포인트] - 가위바위보 게임\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -573,6 +577,55 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     } else {
       replier.reply("❌ " + result.message);
     }
+  }
+  
+  // !가위바위보 [묵/찌/빠] [포인트] 명령어 처리
+  if (msg.startsWith("!가위바위보 ")) {
+    var parts = msg.split(" ");
+    if (parts.length !== 3) {
+      replier.reply("❌ 사용법: !가위바위보 [묵/찌/빠] [포인트]\n예시: !가위바위보 묵 50");
+      return;
+    }
+    
+    var userChoice = parts[1];
+    var betAmount = parseInt(parts[2]);
+    
+    if (isNaN(betAmount) || betAmount < 1 || betAmount > 100) {
+      replier.reply("❌ 베팅 금액은 1P 이상 100P 이하여야 합니다.");
+      return;
+    }
+    
+    var gameResult = rps.playRpsGame(room, sender, userChoice, betAmount);
+    
+    if (gameResult.success) {
+      replier.reply(gameResult.message);
+    } else {
+      replier.reply("❌ " + gameResult.message);
+    }
+  }
+  
+  // !가위바위보설명 명령어 처리
+  if (msg === "!가위바위보설명") {
+    var gameDescription = rps.getGameDescription();
+    replier.reply(gameDescription);
+  }
+  
+  // !가위바위보통계 명령어 처리
+  if (msg === "!가위바위보통계") {
+    var stats = rps.getUserRpsStats(room, sender);
+    replier.reply(stats);
+  }
+  
+  // !가위바위보방통계 명령어 처리
+  if (msg === "!가위바위보방통계") {
+    var roomStats = rps.getRoomRpsStats(room);
+    replier.reply(roomStats);
+  }
+  
+  // !가위바위보기록 명령어 처리
+  if (msg === "!가위바위보기록") {
+    var recentGames = rps.getRecentRpsGames(room, 10);
+    replier.reply(recentGames);
   }
   
 }
