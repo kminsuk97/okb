@@ -11,6 +11,7 @@ var shop = require('shop'); // 상점 시스템 모듈
 var ranking = require('ranking'); // 랭킹 시스템 모듈
 var gambling = require('gambling'); // 베팅 게임 시스템 모듈
 var rps = require('rps'); // 가위바위보 게임 시스템 모듈
+var eyegame = require('eyegame'); // 눈치게임 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -25,6 +26,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     ranking.setReplier(replier);
     gambling.setReplier(replier);
     rps.setReplier(replier);
+    eyegame.setReplier(replier);
     ranking.setModules(activity, point);
     dataManager._replierSet = true;
   }
@@ -69,6 +71,9 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "✂️ !가위바위보설명 - 가위바위보 게임 설명\n";
     helpText += "✂️ !가위바위보 [묵/찌/빠] [포인트] - 가위바위보 게임\n";
     helpText += "📊 !가위바위보상태 - 가위바위보 상태 조회\n";
+    helpText += "👁️ !눈치 [포인트] - 눈치게임 참여\n";
+    helpText += "📊 !눈치게임상태 - 눈치게임 상태 조회\n";
+    helpText += "📝 !눈치게임기록 - 최근 눈치게임 기록\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -96,6 +101,9 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     adminHelpText += "📊 !베팅횟수제한 [횟수] - 하루 베팅 횟수 제한 설정\n";
     adminHelpText += "🚫 !가위바위보중지 - 가위바위보 게임 중지\n";
     adminHelpText += "✅ !가위바위보시작 - 가위바위보 게임 시작\n";
+    adminHelpText += "🚫 !눈치게임중지 - 눈치게임 중지\n";
+    adminHelpText += "✅ !눈치게임시작 - 눈치게임 시작\n";
+    adminHelpText += "🔄 !눈치게임초기화 - 눈치게임 초기화\n";
     adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
     
     replier.reply(adminHelpText);
@@ -660,6 +668,86 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     }
     
     var result = rps.startRps(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !눈치 [포인트] 명령어 처리
+  if (msg.startsWith("!눈치 ")) {
+    var parts = msg.split(" ");
+    if (parts.length !== 2) {
+      replier.reply("❌ 사용법: !눈치 [포인트]\n예시: !눈치 10");
+      return;
+    }
+    
+    var betAmount = parseInt(parts[1]);
+    if (isNaN(betAmount) || betAmount <= 0) {
+      replier.reply("❌ 베팅 금액은 양수여야 합니다.");
+      return;
+    }
+    
+    var gameResult = eyegame.playEyeGame(room, sender, betAmount);
+    
+    if (gameResult.success) {
+      replier.reply(gameResult.message);
+    } else {
+      replier.reply("❌ " + gameResult.message);
+    }
+  }
+  
+  // !눈치게임상태 명령어 처리
+  if (msg === "!눈치게임상태") {
+    var status = eyegame.getEyeGameStatus(room);
+    replier.reply(status);
+  }
+  
+  // !눈치게임기록 명령어 처리
+  if (msg === "!눈치게임기록") {
+    var recentGames = eyegame.getRecentEyeGames(room, 10);
+    replier.reply(recentGames);
+  }
+  
+  // !눈치게임중지 명령어 처리 (관리자만)
+  if (msg === "!눈치게임중지") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 눈치게임을 중지할 수 있습니다.");
+      return;
+    }
+    
+    var result = eyegame.stopEyeGame(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !눈치게임시작 명령어 처리 (관리자만)
+  if (msg === "!눈치게임시작") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 눈치게임을 시작할 수 있습니다.");
+      return;
+    }
+    
+    var result = eyegame.startEyeGame(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !눈치게임초기화 명령어 처리 (관리자만)
+  if (msg === "!눈치게임초기화") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 눈치게임을 초기화할 수 있습니다.");
+      return;
+    }
+    
+    var result = eyegame.resetEyeGame(room, sender);
     if (result.success) {
       replier.reply(result.message);
     } else {
