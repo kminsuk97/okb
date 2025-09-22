@@ -12,6 +12,7 @@ var ranking = require('ranking'); // 랭킹 시스템 모듈
 var gambling = require('gambling'); // 베팅 게임 시스템 모듈
 var rps = require('rps'); // 가위바위보 게임 시스템 모듈
 var eyegame = require('eyegame'); // 눈치게임 시스템 모듈
+var lotto = require('lotto'); // 로또 시스템 모듈
 
 function response(room, msg, sender, isGroupChat, replier, imageDB, packageName) {
   // Replier 객체를 모듈들에 주입 (최초 1회만)
@@ -27,6 +28,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     gambling.setReplier(replier);
     rps.setReplier(replier);
     eyegame.setReplier(replier);
+    lotto.setReplier(replier);
     ranking.setModules(activity, point);
     dataManager._replierSet = true;
   }
@@ -74,6 +76,10 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     helpText += "👁️ !눈치 [포인트] - 눈치게임 참여\n";
     helpText += "📊 !눈치게임상태 - 눈치게임 상태 조회\n";
     helpText += "📝 !눈치게임기록 - 최근 눈치게임 기록\n";
+    helpText += "🎫 !로또자동 - 로또 자동 구매 (100P)\n";
+    helpText += "🎫 !로또수동 [번호] - 로또 수동 구매 (100P)\n";
+    helpText += "📊 !로또상태 - 로또 상태 조회\n";
+    helpText += "🎫 !내로또 - 내 로또 구매 내역\n";
     helpText += "❓ !도움말 - 이 도움말 표시\n\n";
     
     replier.reply(helpText);
@@ -104,6 +110,10 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     adminHelpText += "🚫 !눈치게임중지 - 눈치게임 중지\n";
     adminHelpText += "✅ !눈치게임시작 - 눈치게임 시작\n";
     adminHelpText += "🔄 !눈치게임초기화 - 눈치게임 초기화\n";
+    adminHelpText += "🎉 !로또발표 - 로또 당첨번호 발표\n";
+    adminHelpText += "🔄 !로또초기화 - 로또 새 회차 초기화\n";
+    adminHelpText += "⏰ !로또자동발표설정 - 매일 오후 8시 자동 발표 설정\n";
+    adminHelpText += "❌ !로또자동발표취소 - 자동 발표 취소\n";
     adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
     
     replier.reply(adminHelpText);
@@ -753,6 +763,105 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     } else {
       replier.reply("❌ " + result.message);
     }
+  }
+  
+  // !로또자동 명령어 처리
+  if (msg === "!로또자동") {
+    var result = lotto.buyAutoLotto(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !로또수동 [번호] 명령어 처리
+  if (msg.startsWith("!로또수동 ")) {
+    var numberInput = msg.substring(9).trim(); // "!로또수동 " 제거
+    
+    if (numberInput === "") {
+      replier.reply("❌ 사용법: !로또수동 [번호]\n예시: !로또수동 01 15 23 31 42 45");
+      return;
+    }
+    
+    var result = lotto.buyManualLotto(room, sender, numberInput);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !로또상태 명령어 처리
+  if (msg === "!로또상태") {
+    var status = lotto.getLottoStatus(room);
+    replier.reply(status);
+  }
+  
+  // !내로또 명령어 처리
+  if (msg === "!내로또") {
+    var myLotto = lotto.getMyLotto(room, sender);
+    replier.reply(myLotto);
+  }
+  
+  // !로또발표 명령어 처리 (관리자만)
+  if (msg === "!로또발표") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 로또 발표를 할 수 있습니다.");
+      return;
+    }
+    
+    var result = lotto.drawLotto(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !로또초기화 명령어 처리 (관리자만)
+  if (msg === "!로또초기화") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 로또를 초기화할 수 있습니다.");
+      return;
+    }
+    
+    var result = lotto.resetLotto(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !로또자동발표설정 명령어 처리 (관리자만)
+  if (msg === "!로또자동발표설정") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 자동 발표를 설정할 수 있습니다.");
+      return;
+    }
+    
+    var timeUntil8PM = lotto.setupAutoDrawTimer(room);
+    var hoursUntil8PM = Math.floor(timeUntil8PM / (1000 * 60 * 60));
+    var minutesUntil8PM = Math.floor((timeUntil8PM % (1000 * 60 * 60)) / (1000 * 60));
+    
+    var message = "⏰ 로또 자동 발표가 설정되었습니다!";
+    message += "\n📅 발표 시간: 매일 오후 8시";
+    message += "\n⏱️ 다음 발표까지: " + hoursUntil8PM + "시간 " + minutesUntil8PM + "분";
+    message += "\n🔄 자동으로 다음 날도 설정됩니다.";
+    
+    replier.reply(message);
+  }
+  
+  // !로또자동발표취소 명령어 처리 (관리자만)
+  if (msg === "!로또자동발표취소") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 자동 발표를 취소할 수 있습니다.");
+      return;
+    }
+    
+    lotto.cancelAutoDrawTimer(room);
+    replier.reply("❌ 로또 자동 발표가 취소되었습니다.");
   }
   
 }
