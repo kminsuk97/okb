@@ -44,6 +44,7 @@ function setupAutoDrawTimer(room) {
     // 자동 발표 실행
     var result = drawLotto(room, "SYSTEM");
     if (result.success && globalReplier) {
+      // 방 정보를 포함하여 메시지 전송
       globalReplier.reply(result.message);
     }
     
@@ -102,6 +103,7 @@ function loadLottoData(room) {
       winningNumbers: null,
       drawDate: null,
       isDrawn: false,
+      isDrawing: false, // 발표 진행 중 플래그
       winners: {},
       lastDrawDate: null, // 마지막 발표 날짜
       lastDrawWinnings: 0, // 마지막 발표 당첨금액
@@ -119,6 +121,7 @@ function loadLottoData(room) {
       winningNumbers: null,
       drawDate: null,
       isDrawn: false,
+      isDrawing: false, // 발표 진행 중 플래그
       winners: {},
       lastDrawDate: null, // 마지막 발표 날짜
       lastDrawWinnings: 0, // 마지막 발표 당첨금액
@@ -247,8 +250,17 @@ function parseLottoNumbers(input) {
   var numbers = [];
   
   for (var i = 0; i < parts.length; i++) {
-    var num = parseInt(parts[i]);
-    if (!isNaN(num)) {
+    var part = parts[i].trim();
+    
+    // 빈 문자열 체크
+    if (part === "") {
+      continue;
+    }
+    
+    // parseInt는 자동으로 0으로 시작하는 숫자를 처리함 (01 -> 1)
+    var num = parseInt(part, 10);
+    
+    if (!isNaN(num) && num >= 1 && num <= 45) {
       numbers.push(num);
     }
   }
@@ -445,6 +457,16 @@ function drawLotto(room, adminUserId) {
     };
   }
   
+  // 동시 발표 방지: 발표 진행 중 플래그 설정
+  if (lottoData.isDrawing) {
+    return {
+      success: false,
+      message: "로또 발표가 이미 진행 중입니다."
+    };
+  }
+  lottoData.isDrawing = true;
+  saveLottoData(room, lottoData);
+  
   // 당첨번호 생성
   var winningNumbers = generateLottoNumbers();
   lottoData.winningNumbers = winningNumbers;
@@ -510,6 +532,7 @@ function drawLotto(room, adminUserId) {
   lottoData.currentRound++;
   lottoData.tickets = {}; // 다음 회차를 위해 티켓 초기화
   lottoData.isDrawn = false; // 다음 회차 발표 대기 상태로 초기화
+  lottoData.isDrawing = false; // 발표 진행 플래그 해제
   
   // 데이터 저장
   savePointData(room, pointData);
@@ -671,7 +694,10 @@ function resetLotto(room, adminUserId) {
   lottoData.winningNumbers = null;
   lottoData.drawDate = null;
   lottoData.isDrawn = false;
+  lottoData.isDrawing = false;
   lottoData.winners = {};
+  lottoData.lastDrawDate = null; // 발표 날짜 초기화
+  lottoData.lastDrawWinnings = 0; // 당첨금액 초기화
   
   if (saveLottoData(room, lottoData)) {
     var message = "🔄 로또가 " + lottoData.currentRound + "회차로 초기화되었습니다!";
@@ -699,6 +725,63 @@ function resetLotto(room, adminUserId) {
   }
 }
 
+// 로또 공장 초기화 (관리자 전용) - 모든 데이터 완전 초기화
+function factoryResetLotto(room, adminUserId) {
+  var lottoData = loadLottoData(room);
+  
+  var resetInfo = {
+    currentRound: lottoData.currentRound,
+    totalTickets: lottoData.roomStats.totalTickets,
+    totalWinnings: lottoData.roomStats.totalWinnings,
+    totalRounds: lottoData.roomStats.totalRounds,
+    autoDrawEnabled: lottoData.autoDrawEnabled
+  };
+  
+  // 모든 데이터 완전 초기화
+  lottoData.currentRound = 1;
+  lottoData.tickets = {};
+  lottoData.winningNumbers = null;
+  lottoData.drawDate = null;
+  lottoData.isDrawn = false;
+  lottoData.isDrawing = false;
+  lottoData.winners = {};
+  lottoData.lastDrawDate = null;
+  lottoData.lastDrawWinnings = 0;
+  lottoData.autoDrawEnabled = false;
+  lottoData.roomStats = {
+    totalTickets: 0,
+    totalWinnings: 0,
+    totalRounds: 0
+  };
+  
+  // 기존 자동 발표 타이머 취소
+  if (roomTimers[room]) {
+    clearTimeout(roomTimers[room]);
+    delete roomTimers[room];
+  }
+  
+  if (saveLottoData(room, lottoData)) {
+    var message = "🏭 로또 공장 초기화가 완료되었습니다!";
+    message += "\n📊 초기화된 데이터:";
+    message += "\n• 회차: " + resetInfo.currentRound + "회차 → 1회차";
+    message += "\n• 총 판매 티켓: " + resetInfo.totalTickets + "장 → 0장";
+    message += "\n• 총 지급 상금: " + resetInfo.totalWinnings + "P → 0P";
+    message += "\n• 총 회차: " + resetInfo.totalRounds + "회차 → 0회차";
+    message += "\n• 자동 발표: " + (resetInfo.autoDrawEnabled ? "활성화" : "비활성화") + " → 비활성화";
+    message += "\n\n🔄 모든 데이터가 완전히 초기화되었습니다.";
+    
+    return {
+      success: true,
+      message: message
+    };
+  } else {
+    return {
+      success: false,
+      message: "로또 공장 초기화에 실패했습니다."
+    };
+  }
+}
+
 // 아래와 같이 반드시 "키: 값" 쌍으로 객체 반환
 module.exports = {
   // Replier 설정
@@ -716,6 +799,7 @@ module.exports = {
   // 관리자 기능
   drawLotto: drawLotto,
   resetLotto: resetLotto,
+  factoryResetLotto: factoryResetLotto,
   
   // 자동 발표 타이머 관리
   setupAutoDrawTimer: setupAutoDrawTimer,

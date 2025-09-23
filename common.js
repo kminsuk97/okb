@@ -113,6 +113,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     adminHelpText += "🔄 !눈치게임초기화 - 눈치게임 초기화\n";
     adminHelpText += "🎉 !로또발표 - 로또 당첨번호 발표\n";
     adminHelpText += "🔄 !로또초기화 - 로또 새 회차 초기화\n";
+    adminHelpText += "🏭 !로또공장초기화 - 로또 모든 데이터 완전 초기화\n";
     adminHelpText += "⏰ !로또자동발표설정 - 매일 오후 8시 자동 발표 설정\n";
     adminHelpText += "❌ !로또자동발표취소 - 자동 발표 취소\n";
     adminHelpText += "❓ !관리자도움말 - 이 도움말 표시\n\n";
@@ -778,7 +779,7 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
   
   // !로또수동 [번호] 명령어 처리
   if (msg.startsWith("!로또수동 ")) {
-    var numberInput = msg.substring(9).trim(); // "!로또수동 " 제거
+    var numberInput = msg.substring(6).trim(); // "!로또수동 " 제거 (6글자)
     
     if (numberInput === "") {
       replier.reply("❌ 사용법: !로또수동 [번호]\n예시: !로또수동 01 15 23 31 42 45");
@@ -834,6 +835,21 @@ function response(room, msg, sender, isGroupChat, replier, imageDB, packageName)
     }
     
     var result = lotto.resetLotto(room, sender);
+    if (result.success) {
+      replier.reply(result.message);
+    } else {
+      replier.reply("❌ " + result.message);
+    }
+  }
+  
+  // !로또공장초기화 명령어 처리 (관리자만)
+  if (msg === "!로또공장초기화") {
+    if (!admin.isAdmin(room, sender)) {
+      replier.reply("❌ 관리자만 로또 공장 초기화를 할 수 있습니다.");
+      return;
+    }
+    
+    var result = lotto.factoryResetLotto(room, sender);
     if (result.success) {
       replier.reply(result.message);
     } else {
